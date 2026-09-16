@@ -1,5 +1,4 @@
 # C 
-### Beecrowd
 
 Código nosso que estás em C<br>
 Santificado seja vós, Console<br>
