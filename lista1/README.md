@@ -63,10 +63,10 @@ Leia a hora e o minuto de início e término de um jogo. Calcule a duração tot
 Leia o valor de um salário e aplique o reajuste percentual com base na tabela abaixo. Imprima o novo salário, o valor do reajuste e o percentual utilizado.
 
 | Faixa Salarial | Percentual de Aumento |
-| :--- | :---: |
-| $< \text{R\$ } 1.500,00$ | $20\%$ |
-| $\ge \text{R\$ } 1.500,00$ e $< \text{R\$ } 5.000,00$ | $15\%$ |
-| $> \text{R\$ } 5.000,00$ | $10\%$ |
+|---|---|
+| Menor que R$ 1.500,00 | 20% |
+| Entre R$ 1.500,00 e R$ 5.000,00 | 15% |
+| Maior que R$ 5.000,00 | 10% |
 
 ---
 
