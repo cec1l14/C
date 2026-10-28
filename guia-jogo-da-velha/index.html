@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Guia de estudo do jogo da velha em C: arquitetura, ponteiros, regras da IA com tabuleiros interativos e cartões de revisão.">
+<title>Guia Jogo da Velha</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  
+:root{
+  --bg:#F5F6F8; --surface:#FFFFFF; --fg:#16202B; --muted:#5A6675; --line:#D9DEE5;
+  --accent:#0B6E78; --accent-soft:#D8EEF0; --accent-fg:#FFFFFF;
+  --human:#B4440A; --ia:#0B6E78;
+  --ok:#1F7A3E; --ok-soft:#DDF1E3; --warn:#8A5A00; --warn-soft:#FBEBC8; --todo:#5A6675; --todo-soft:#E6E9EE;
+  --code-bg:#EEF1F5; --win:#FFE9A8;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F161D; --surface:#17212B; --fg:#E6EBF0; --muted:#9AA7B5; --line:#2A3744;
+    --accent:#4CC3CF; --accent-soft:#123940; --accent-fg:#06222A;
+    --human:#F08A4B; --ia:#4CC3CF;
+    --ok:#6FD08C; --ok-soft:#173826; --warn:#F1C45A; --warn-soft:#3A2D0B; --todo:#9AA7B5; --todo-soft:#222D38;
+    --code-bg:#1D2A36; --win:#4A3F12; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F161D; --surface:#17212B; --fg:#E6EBF0; --muted:#9AA7B5; --line:#2A3744;
+  --accent:#4CC3CF; --accent-soft:#123940; --accent-fg:#06222A;
+  --human:#F08A4B; --ia:#4CC3CF;
+  --ok:#6FD08C; --ok-soft:#173826; --warn:#F1C45A; --warn-soft:#3A2D0B; --todo:#9AA7B5; --todo-soft:#222D38;
+  --code-bg:#1D2A36; --win:#4A3F12; color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+*{box-sizing:border-box}
+.wrap{max-width:920px;margin:0 auto}
+header{padding:40px 0 20px}
+.kicker{font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+h1{font-size:clamp(28px,5vw,42px);line-height:1.15;margin:0 0 12px;text-wrap:balance;font-weight:700}
+.lead{max-width:65ch;color:var(--muted);margin:0}
+nav.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);margin-bottom:8px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+nav.top ul{display:flex;gap:4px;list-style:none;margin:0;padding:8px 0;overflow-x:auto;scrollbar-width:thin}
+nav.top a{display:block;white-space:nowrap;padding:6px 12px;border-radius:6px;color:var(--muted);text-decoration:none;font-size:14px;font-weight:500}
+nav.top a:hover{background:var(--accent-soft);color:var(--fg)}
+nav.top a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section{padding:36px 0 8px;scroll-margin-top:64px}
+h2{font-size:26px;line-height:1.25;margin:0 0 6px;text-wrap:balance}
+h3{font-size:18px;margin:24px 0 8px}
+p{margin:0 0 12px;max-width:68ch}
+.sub{color:var(--muted);margin-bottom:18px}
+code{font-family:var(--mono);font-size:.9em;background:var(--code-bg);padding:1px 6px;border-radius:4px}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.55;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;margin:12px 0;max-width:100%}
+pre code{background:none;padding:0;font-size:inherit}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.grid>*{min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.card h3{margin:0 0 6px;font-size:17px}
+.card p{margin:0 0 8px;font-size:15px}
+.chip{display:inline-block;font-family:var(--mono);font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.todo{background:var(--todo-soft);color:var(--todo)}
+.tablewrap{overflow-x:auto;max-width:100%;margin:12px 0}
+table{border-collapse:collapse;width:100%;min-width:480px;font-size:15px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+td:first-child{font-weight:500}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);padding:12px 16px;border-radius:0 8px 8px 0;margin:16px 0;max-width:68ch}
+.callout p{margin:0}
+.callout.warn{border-color:var(--warn);background:var(--warn-soft)}
+/* diagrama de dependências */
+.deps{display:flex;flex-direction:column;align-items:center;gap:6px;margin:16px 0}
+.deps .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.node{font-family:var(--mono);font-size:14px;font-weight:600;padding:8px 16px;border-radius:8px;background:var(--surface);border:1.5px solid var(--line)}
+.node.base{border-color:var(--accent);color:var(--accent)}
+.arrow{color:var(--muted);font-family:var(--mono);font-size:13px}
+/* tabuleiros */
+.board{display:grid;grid-template-columns:repeat(3,64px);grid-auto-rows:64px;gap:4px;margin:0}
+.board button,.cell{font-family:var(--mono);font-size:30px;font-weight:600;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0}
+.board button{cursor:pointer}
+.board button:hover:not(:disabled){border-color:var(--accent)}
+.board button:disabled{cursor:default}
+.cell.O,.board .O{color:var(--human)}
+.cell.X,.board .X{color:var(--ia)}
+.board .win{background:var(--win)}
+.board .hl,.mini .hl{outline:3px solid var(--accent);outline-offset:-3px}
+.mini{display:inline-grid;grid-template-columns:repeat(3,30px);grid-auto-rows:30px;gap:3px;margin:4px 10px 4px 0}
+.mini .cell{font-size:15px;border-radius:5px;border-width:1px}
+.minis{display:flex;flex-wrap:wrap;gap:6px 18px;margin:10px 0}
+.minis figure{margin:0}
+.minis figcaption{font-size:13px;color:var(--muted);max-width:170px}
+.lab{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin:14px 0}
+.lab .out{flex:1;min-width:240px}
+.vals{display:grid;grid-template-columns:repeat(3,64px);gap:4px;margin-top:8px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.vals span{text-align:center}
+.sums{font-family:var(--mono);font-size:14px;line-height:1.7;margin:0;padding:0;list-style:none}
+.sums li{display:flex;gap:10px}
+.sums .tag{min-width:7.5em;color:var(--muted)}
+.sums .hit{color:var(--accent);font-weight:600}
+.status{font-weight:600;margin:10px 0 4px}
+.btn{font-family:var(--sans);font-size:14px;font-weight:600;padding:8px 14px;border-radius:8px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer}
+.btn.fill{background:var(--accent);color:var(--accent-fg)}
+.btn:hover{filter:brightness(1.08)}
+.log{font-family:var(--mono);font-size:13.5px;margin:0;padding:0;list-style:none;max-height:210px;overflow-y:auto}
+.log li{padding:5px 0;border-bottom:1px dashed var(--line)}
+.rule{color:var(--accent);font-weight:600}
+/* regras */
+ol.rules{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+ol.rules>li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px 12px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;min-width:0}
+.rid{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--accent-fg);background:var(--accent);border-radius:6px;padding:2px 10px;align-self:start}
+.rbody{min-width:0}
+.rbody h3{margin:0 0 2px;font-size:17px}
+.rbody p{margin:0 0 6px;font-size:15px}
+.why{color:var(--muted)}
+/* cartões */
+.deck{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;max-width:680px}
+.deck .meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:13px;color:var(--muted);margin-bottom:10px}
+.deck .q{font-size:19px;font-weight:600;margin:0 0 12px;min-height:3.2em;text-wrap:balance}
+.deck .a{border-top:1px solid var(--line);padding-top:12px;margin-top:6px}
+.deck .a p{margin:0 0 8px}
+.deck .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.bar{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin:6px 0 0}
+.bar i{display:block;height:100%;background:var(--accent);width:0}
+footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+@media (max-width:520px){
+  .board{grid-template-columns:repeat(3,58px);grid-auto-rows:58px}
+  .vals{grid-template-columns:repeat(3,58px)}
+  ol.rules>li{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:no-preference){ .btn,nav.top a{transition:background .15s,filter .15s} }
+
+/* moldura própria (no Claude, estas regras vinham da página que hospedava o arquivo) */
+html{color-scheme:light}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="kicker">Programação Estruturada · Guia de estudo</p>
+  <h1>Jogo da Velha em C</h1>
+  <p class="lead">Resumo das principais implementações do projeto, na ordem em que vale a pena estudá-las. As seções com tabuleiro são interativas: mexa nelas para ver a lógica funcionando.</p>
+</header>
+
+<nav class="top" aria-label="Seções"><ul>
+  <li><a href="#visao">Visão geral</a></li>
+  <li><a href="#arquitetura">Arquitetura</a></li>
+  <li><a href="#tabuleiro">Tabuleiro</a></li>
+  <li><a href="#ponteiros">Ponteiros</a></li>
+  <li><a href="#partida">Partida</a></li>
+  <li><a href="#ia">IA</a></li>
+  <li><a href="#decisoes">Decisões</a></li>
+  <li><a href="#cartoes">Cartões</a></li>
+</ul></nav>
+
+<section id="visao">
+  <h2>Visão geral</h2>
+  <p class="sub">O enunciado divide o trabalho em atividades, cada uma com sua apresentação; este guia cobre o tabuleiro e a IA. A avaliação olha funcionamento, clareza do código, documentação interna e se você entende os conceitos por trás.</p>
+  <div class="grid">
+    <div class="card"><h3>Atividade 1: tabuleiro</h3><p><span class="chip ok">pronta</span></p><p>Tabuleiro, jogador de teclado e partida. Dois humanos jogam até haver vencedor ou empate.</p></div>
+    <div class="card"><h3>Atividade 2: IA</h3><p><span class="chip ok">pronta</span></p><p>Jogador do computador com seis regras testadas em ordem. Humano abre, IA responde.</p></div>
+  </div>
+  <div class="callout"><p>O objetivo geral é um único jogo em que o usuário escolhe o modo. A pasta <code>entrega/</code> já reúne dois: humano contra humano e humano contra IA.</p></div>
+</section>
+
+<section id="arquitetura">
+  <h2>Arquitetura</h2>
+  <p class="sub">Cada módulo tem um <code>.h</code> (o que os outros podem usar) e um <code>.c</code> (a implementação). Não há ciclos: o tabuleiro não conhece ninguém.</p>
+  <div class="deps" role="img" aria-label="main usa partida; partida usa jogadorTeclado e jogadorIA; os dois usam tabuleiro">
+    <div class="node">main</div><div class="arrow">↓ chama</div>
+    <div class="node">partida</div><div class="arrow">↓ chama</div>
+    <div class="row"><div class="node">jogadorTeclado</div><div class="node">jogadorIA</div></div>
+    <div class="arrow">↓ marcam jogadas em</div>
+    <div class="node base">tabuleiro</div>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Arquivo</th><th>Em uma frase</th></tr></thead>
+    <tbody>
+      <tr><td><code>tabuleiro.c</code></td><td>Guarda a matriz 3x3, desenha, marca jogadas e diz o resultado da partida.</td></tr>
+      <tr><td><code>jogadorTeclado.c</code></td><td>Lê linha e coluna do humano, valida a casa e marca.</td></tr>
+      <tr><td><code>jogadorIA.c</code></td><td>Escolhe a jogada pelas regras R1 a R6.</td></tr>
+      <tr><td><code>partida.c</code></td><td>Pergunta modo e símbolos, e controla o laço do jogo.</td></tr>
+      <tr><td><code>main.c</code></td><td>Cria as variáveis e inicia a partida.</td></tr>
+    </tbody></table></div>
+  <h3>Do material das aulas</h3>
+  <p>Módulos <code>.c</code>/<code>.h</code> com guarda <code>#ifndef</code> (Aula 8), <code>struct</code> e operador <code>-&gt;</code> (Aula 7), ponteiros como parâmetro (Aula 4), matriz (Aula 5). Um <code>.c</code> nunca é incluído em outro arquivo.</p>
+</section>
+
+<section id="tabuleiro">
+  <h2>Tabuleiro: por que 0, 1 e 4</h2>
+  <p class="sub">A matriz guarda inteiros: <code>0</code> vazia, <code>1</code> para O, <code>4</code> para X. Somando as três casas de uma linha, o resultado já diz se alguém venceu.</p>
+  <div class="lab">
+    <div>
+      <div class="board" id="lab-board" aria-label="Tabuleiro de teste: clique para alternar vazio, O e X"></div>
+      <div class="vals" id="lab-vals" aria-hidden="true"></div>
+      <p style="margin-top:10px"><button class="btn" id="lab-clear" type="button">Limpar</button></p>
+    </div>
+    <div class="out">
+      <p class="status" id="lab-status"></p>
+      <ul class="sums" id="lab-sums"></ul>
+    </div>
+  </div>
+  <div class="callout"><p>Três O somam <b>3</b>, três X somam <b>12</b>. Com os valores 0, 1 e 4, nenhuma outra mistura de três casas dá 3 ou 12. Com 1 e 2 isso falharia: <code>O X vazio</code> somaria 3, igual a <code>X X X</code> se X valesse 1.</p></div>
+  <h3>temVencedor devolve um código</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Retorno</th><th>Significa</th></tr></thead>
+    <tbody>
+      <tr><td><code>0</code></td><td>ninguém ganhou e ainda há casa vazia: o jogo continua</td></tr>
+      <tr><td><code>O</code> ou <code>X</code></td><td>esse jogador venceu</td></tr>
+      <tr><td><code>EMPATE</code></td><td>tabuleiro cheio sem vencedor</td></tr>
+    </tbody></table></div>
+  <p>A vitória é checada <b>antes</b> do empate. Se a 9ª jogada vence, o tabuleiro cheio não pode virar empate.</p>
+</section>
+
+<section id="ponteiros">
+  <h2>Ponteiros e structs</h2>
+  <p class="sub">As structs nascem uma vez, na <code>main</code>. Todas as funções recebem o endereço delas.</p>
+<pre><code>// main.c
+Tabuleiro tab;
+JogadorTeclado humano1, humano2;
+JogadorIA ia;
+int modo;
+
+configuraJogadores(&amp;modo, &amp;humano1, &amp;humano2, &amp;ia);
+inicia(&amp;tab, modo, &amp;humano1, &amp;humano2, &amp;ia);</code></pre>
+  <div class="grid">
+    <div class="card"><h3>Por que ponteiro</h3><p>O C passa argumentos por cópia. Se <code>marcaJogada</code> recebesse <code>Tabuleiro tab</code>, gravaria na cópia, que some no fim da função. O tabuleiro da <code>main</code> ficaria intacto.</p></div>
+    <div class="card"><h3><code>.</code> ou <code>-&gt;</code></h3><p><code>.</code> quando tenho a struct em si. <code>-&gt;</code> quando tenho um ponteiro para ela. <code>jogador-&gt;tipo</code> é o atalho de <code>(*jogador).tipo</code>.</p></div>
+  </div>
+  <h3>Quando usar &amp;</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Onde estou</th><th>A variável é</th><th>Ao chamar uma função que pede ponteiro</th></tr></thead>
+    <tbody>
+      <tr><td>na <code>main</code></td><td>variável comum</td><td><code>&amp;tab</code></td></tr>
+      <tr><td>dentro de <code>inicia</code></td><td>já é ponteiro</td><td><code>tab</code>, sem &amp;</td></tr>
+      <tr><td><code>scanf</code> com variável local</td><td><code>int tipo1</code></td><td><code>&amp;tipo1</code></td></tr>
+      <tr><td><code>scanf</code> com parâmetro ponteiro</td><td><code>int *modo</code></td><td><code>modo</code>, sem &amp;</td></tr>
+    </tbody></table></div>
+  <div class="callout"><p>Em <code>*modo</code> o asterisco pega o número apontado. O nome sozinho, <code>modo</code>, é o endereço. Por isso as comparações usam <code>*modo</code> e o <code>scanf</code> usa <code>modo</code>.</p></div>
+</section>
+
+<section id="partida">
+  <h2>O laço da partida</h2>
+  <p class="sub">Depois de configurar os jogadores, <code>inicia</code> repete até <code>temVencedor</code> devolver algo diferente de zero.</p>
+<pre><code>while(vencedor == 0){
+    if(vez % 2 == 0){
+        joga(humano1, tab);
+    } else if(modo == MODO_HUMANO_VS_HUMANO){
+        joga(humano2, tab);
+    } else {
+        jogaIA(tab, ia);
+    }
+    desenha(tab);
+    vencedor = temVencedor(tab);
+    vez++;
+}</code></pre>
+  <ol>
+    <li><code>vez % 2</code> alterna os jogadores: o jogador 1 joga nas vezes pares.</li>
+    <li>O tabuleiro é redesenhado depois de cada jogada, como o enunciado pede (<code>\033[2J\033[H</code> limpa a tela).</li>
+    <li>O segundo jogador recebe o símbolo oposto ao do primeiro, então os dois nunca repetem símbolo.</li>
+    <li>No <code>joga</code> do teclado, o <code>&amp;&amp;</code> testa os limites <b>antes</b> de ler a matriz, para nunca acessar fora dela.</li>
+  </ol>
+</section>
+
+<section id="ia">
+  <h2>A IA: seis regras em ordem</h2>
+  <p class="sub">A primeira regra que encontra uma jogada marca e termina com <code>return</code>. A ordem vai do mais urgente ao menos importante, então ela faz parte da lógica.</p>
+  <ol class="rules">
+    <li><span class="rid">R1</span><div class="rbody"><h3>Ganhar, senão bloquear</h3>
+      <p>Procura uma linha, coluna ou diagonal com duas peças iguais e uma casa vazia. Primeiro com as peças da IA (vence), depois com as do adversário (bloqueia).</p>
+      <p class="why">Vencer vem antes de bloquear: se posso ganhar, bloquear desperdiça a vitória. Cada linha tem três formatos: <code>A A _</code>, <code>_ A A</code> e <code>A _ A</code> (vazio no meio).</p>
+      <div class="minis"><figure><div class="mini" data-b="XX. ... ..." data-hl="2"></div><figcaption>IA tem duas na linha: joga na terceira.</figcaption></figure><figure><div class="mini" data-b="O.O ..X ..." data-hl="1"></div><figcaption>Adversário com vazio no meio: bloqueia.</figcaption></figure></div></div></li>
+    <li><span class="rid">R2</span><div class="rbody"><h3>Criar duas ameaças ao mesmo tempo</h3>
+      <p>Procura uma casa vazia que, marcada, deixe duas linhas com duas peças da IA e a terceira vazia. O adversário só bloqueia uma, e a IA vence na outra.</p>
+      <p class="why">Com a casa em teste valendo 0, uma linha soma exatamente o símbolo da IA quando tem uma peça dela e duas casas vazias. A R2 só age na segunda jogada da IA, e só funciona porque a R1 já rodou antes. Nas partidas em que o humano abre, as regras anteriores levam a IA a outras jogadas: em todas as 585 partidas possíveis a R2 nunca foi usada, então o tabuleiro abaixo não costuma mostrá-la.</p>
+      <div class="minis"><figure><div class="mini" data-b="X.. ..X ..." data-hl="2"></div><figcaption>X em (0,2) cria duas ameaças: linha 0 e coluna 2.</figcaption></figure></div></div></li>
+    <li><span class="rid">R3</span><div class="rbody"><h3>Centro</h3>
+      <p>Se a casa do meio está livre, ocupa. É a casa que participa de mais linhas: quatro.</p></div></li>
+    <li><span class="rid">R4</span><div class="rbody"><h3>Canto oposto ao do adversário</h3>
+      <p>Se o adversário tem um canto e o oposto está vazio, toma o oposto. O oposto sai de trocar 0 por 2 e 2 por 0 nas coordenadas.</p>
+      <div class="minis"><figure><div class="mini" data-b="O.. .X. ..." data-hl="8"></div><figcaption>Adversário em (0,0): a IA pega (2,2).</figcaption></figure></div></div></li>
+    <li><span class="rid">R5</span><div class="rbody"><h3>Algum canto vazio</h3>
+      <p>Percorre os quatro cantos em ordem fixa e marca o primeiro livre. Canto participa de três linhas, mais que a aresta (duas).</p></div></li>
+    <li><span class="rid">R6</span><div class="rbody"><h3>Qualquer casa vazia</h3>
+      <p>Último recurso: primeira casa livre, linha por linha. Nesse ponto só sobram casas de aresta.</p></div></li>
+  </ol>
+
+  <h3>Experimente</h3>
+  <p>Você joga com <b>O</b> e abre a partida. A IA joga com <b>X</b> e mostra qual regra usou.</p>
+  <div class="lab">
+    <div>
+      <div class="board" id="ia-board" aria-label="Tabuleiro contra a IA"></div>
+      <p style="margin-top:10px"><button class="btn" id="ia-reset" type="button">Reiniciar</button></p>
+    </div>
+    <div class="out">
+      <p class="status" id="ia-status">Sua vez: clique numa casa.</p>
+      <ul class="log" id="ia-log"></ul>
+    </div>
+  </div>
+  <div class="callout warn"><p><b>Desafio:</b> tente vencer. Abra no canto superior esquerdo, depois jogue no canto inferior direito, depois no canto inferior esquerdo, e feche a linha de baixo. Com as seis regras do enunciado a IA ainda perde em algumas sequências: faltaria a regra de bloquear a jogada dupla do adversário. Em uma busca por todas as partidas possíveis, o humano vence em 6 de 585.</p></div>
+</section>
+
+<section id="decisoes">
+  <h2>Decisões e limitações</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Decisão</th><th>Motivo</th></tr></thead>
+    <tbody>
+      <tr><td>Valores 0, 1 e 4</td><td>Somas únicas (3 e 12) para detectar o vencedor.</td></tr>
+      <tr><td><code>temVencedor</code> devolve um código</td><td>O laço só precisa de uma condição.</td></tr>
+      <tr><td>Vitória checada antes do empate</td><td>Vitória na 9ª jogada não vira empate.</td></tr>
+      <tr><td>Jogador 2 recebe o símbolo que sobra</td><td>Evita dois jogadores com o mesmo símbolo.</td></tr>
+      <tr><td><code>jogaIA</code>, não <code>joga</code></td><td>C não permite duas funções com o mesmo nome.</td></tr>
+      <tr><td>Regra extra fora da entrega</td><td>O enunciado pede exatamente as seis regras. A extra (<code>r7</code>) bloqueia a jogada dupla do adversário e torna a IA invencível.</td></tr>
+    </tbody></table></div>
+  <h3>Limitações, para dizer antes que perguntem</h3>
+  <ul>
+    <li>Digitar letras onde se espera número trava a leitura. Foi escolha de escopo: não faz parte do que foi dado em aula.</li>
+    <li>R5 e R6 sempre escolhem na mesma ordem, sem sorteio.</li>
+    <li>O jogador 1 sempre abre a partida.</li>
+  </ul>
+  <h3>Como foi testado</h3>
+  <p>Vitórias em linha, coluna e diagonais, empate e vitória na 9ª jogada. Casos montados à mão para a R1. As 32 configurações em que a R2 precisa agir. Uma simulação de 40.000 partidas conferindo que a IA marca exatamente uma casa livre por turno.</p>
+</section>
+
+<section id="cartoes">
+  <h2>Cartões de revisão</h2>
+  <p class="sub">Tente responder em voz alta antes de abrir a resposta. Marque o que ainda precisa rever.</p>
+  <div class="deck" id="deck">
+    <div class="meta"><span id="deck-pos"></span><span id="deck-score"></span></div>
+    <div class="bar"><i id="deck-bar"></i></div>
+    <p class="q" id="deck-q" style="margin-top:14px"></p>
+    <div class="a" id="deck-a" hidden></div>
+    <div class="actions">
+      <button class="btn fill" id="deck-show" type="button">Mostrar resposta</button>
+      <button class="btn" id="deck-know" type="button" hidden>Sabia</button>
+      <button class="btn" id="deck-review" type="button" hidden>Revisar</button>
+      <button class="btn" id="deck-skip" type="button">Pular</button>
+    </div>
+  </div>
+  <p style="margin-top:12px"><button class="btn" id="deck-reset" type="button">Zerar progresso</button></p>
+</section>
+
+<footer>Baseado no enunciado da disciplina e no código da pasta <code>entrega/</code>.</footer>
+</div>
+
+<script>
+// ==LOGICA==
+var V = 0, O = 1, X = 4;
+// ordem de varredura do código C: linha0, coluna0, linha1, coluna1, linha2, coluna2, diagonal, diagonal secundária
+var LINES = [[0,1,2],[0,3,6],[3,4,5],[1,4,7],[6,7,8],[2,5,8],[0,4,8],[2,4,6]];
+var CORNERS = [0,2,8,6], OPPOSITE = [8,6,0,2];
+
+function resultado(b){
+  for (var k = 0; k < LINES.length; k++){
+    var l = LINES[k], s = b[l[0]] + b[l[1]] + b[l[2]];
+    if (s === 3) return { who: O, line: l };
+    if (s === 12) return { who: X, line: l };
+  }
+  if (b.indexOf(V) === -1) return { who: 'empate', line: [] };
+  return null;
+}
+
+function iaMove(b, ia){
+  var hum = ia === X ? O : X, k, l, p, t;
+  // R1: ganhar (peças da IA), depois bloquear (peças do adversário)
+  var tipos = [ia, hum];
+  for (t = 0; t < 2; t++){
+    for (k = 0; k < LINES.length; k++){
+      l = LINES[k];
+      var n = 0, vazio = -1;
+      for (var c = 0; c < 3; c++){ if (b[l[c]] === tipos[t]) n++; else if (b[l[c]] === V) vazio = l[c]; }
+      if (n === 2 && vazio !== -1)
+        return { idx: vazio, rule: 'R1', why: t === 0 ? 'completo minha sequência de duas e venço' : 'bloqueio a sequência de duas do adversário' };
+    }
+  }
+  // R2: casa vazia que cria duas sequências de duas peças (soma da linha == símbolo da IA, com a casa valendo 0)
+  for (p = 0; p < 9; p++){
+    if (b[p] !== V) continue;
+    var cont = 0;
+    for (k = 0; k < LINES.length; k++){
+      l = LINES[k];
+      if (l.indexOf(p) === -1) continue;
+      if (b[l[0]] + b[l[1]] + b[l[2]] === ia) cont++;
+    }
+    if (cont >= 2) return { idx: p, rule: 'R2', why: 'crio duas sequências de duas peças ao mesmo tempo' };
+  }
+  // R3: centro
+  if (b[4] === V) return { idx: 4, rule: 'R3', why: 'o centro está livre' };
+  // R4: canto oposto ao do adversário
+  for (k = 0; k < 4; k++){
+    if (b[CORNERS[k]] === hum && b[OPPOSITE[k]] === V) return { idx: OPPOSITE[k], rule: 'R4', why: 'o adversário tem um canto: pego o oposto' };
+  }
+  // R5: algum canto vazio
+  for (k = 0; k < 4; k++){
+    if (b[CORNERS[k]] === V) return { idx: CORNERS[k], rule: 'R5', why: 'há um canto vazio' };
+  }
+  // R6: qualquer casa vazia
+  for (p = 0; p < 9; p++){
+    if (b[p] === V) return { idx: p, rule: 'R6', why: 'primeira casa vazia' };
+  }
+  return null;
+}
+// ==FIM==
+
+function sym(v){ return v === O ? 'O' : v === X ? 'X' : ''; }
+function pos(i){ return '(' + Math.floor(i / 3) + ',' + (i % 3) + ')'; }
+
+/* ---------- tabuleiros pequenos dos exemplos ---------- */
+document.querySelectorAll('.mini').forEach(function(el){
+  var rows = el.getAttribute('data-b').split(' '), hl = el.getAttribute('data-hl');
+  rows.join('').split('').forEach(function(ch, i){
+    var d = document.createElement('div');
+    d.className = 'cell' + (ch === 'X' ? ' X' : ch === 'O' ? ' O' : '') + (String(i) === hl ? ' hl' : '');
+    d.textContent = ch === 'X' || ch === 'O' ? ch : (String(i) === hl ? '•' : '');
+    el.appendChild(d);
+  });
+});
+
+/* ---------- laboratório de somas ---------- */
+(function(){
+  var b = [0,0,0,0,0,0,0,0,0];
+  var boardEl = document.getElementById('lab-board'), valsEl = document.getElementById('lab-vals');
+  var statusEl = document.getElementById('lab-status'), sumsEl = document.getElementById('lab-sums');
+  var NOMES = ['linha 0','coluna 0','linha 1','coluna 1','linha 2','coluna 2','diagonal','diag. sec.'];
+  var btns = [];
+  for (var i = 0; i < 9; i++){
+    (function(i){
+      var bt = document.createElement('button');
+      bt.type = 'button';
+      bt.addEventListener('click', function(){ b[i] = b[i] === V ? O : b[i] === O ? X : V; draw(); });
+      boardEl.appendChild(bt); btns.push(bt);
+      var s = document.createElement('span'); valsEl.appendChild(s);
+    })(i);
+  }
+  document.getElementById('lab-clear').addEventListener('click', function(){ b = [0,0,0,0,0,0,0,0,0]; draw(); });
+  function draw(){
+    var res = resultado(b), win = res ? res.line : [];
+    btns.forEach(function(bt, i){
+      bt.textContent = sym(b[i]);
+      bt.className = (b[i] === O ? 'O' : b[i] === X ? 'X' : '') + (win.indexOf(i) !== -1 ? ' win' : '');
+      bt.setAttribute('aria-label', 'Casa ' + pos(i) + ': ' + (b[i] === V ? 'vazia' : sym(b[i])));
+    });
+    valsEl.querySelectorAll('span').forEach(function(s, i){ s.textContent = b[i]; });
+    sumsEl.innerHTML = '';
+    LINES.forEach(function(l, k){
+      var s = b[l[0]] + b[l[1]] + b[l[2]];
+      var li = document.createElement('li');
+      var tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = NOMES[k];
+      var val = document.createElement('span'); val.textContent = 'soma = ' + s + (s === 3 ? '  → O vence' : s === 12 ? '  → X vence' : '');
+      if (s === 3 || s === 12) val.className = 'hit';
+      li.appendChild(tag); li.appendChild(val); sumsEl.appendChild(li);
+    });
+    statusEl.textContent = !res ? 'Ninguém ganhou ainda. Clique nas casas para alternar vazio, O e X.'
+      : res.who === 'empate' ? 'Tabuleiro cheio, sem vencedor: EMPATE.' : (res.who === O ? 'O' : 'X') + ' venceu.';
+  }
+  draw();
+})();
+
+/* ---------- jogue contra a IA ---------- */
+(function(){
+  var b, over, boardEl = document.getElementById('ia-board'), logEl = document.getElementById('ia-log'), statusEl = document.getElementById('ia-status');
+  var btns = [];
+  for (var i = 0; i < 9; i++){
+    (function(i){
+      var bt = document.createElement('button'); bt.type = 'button';
+      bt.addEventListener('click', function(){ play(i); });
+      boardEl.appendChild(bt); btns.push(bt);
+    })(i);
+  }
+  function addLog(html){ var li = document.createElement('li'); li.innerHTML = html; logEl.appendChild(li); logEl.scrollTop = logEl.scrollHeight; }
+  function reset(){ b = [0,0,0,0,0,0,0,0,0]; over = false; logEl.innerHTML = ''; statusEl.textContent = 'Sua vez: clique numa casa.'; draw(); }
+  function draw(){
+    var res = resultado(b), win = res ? res.line : [];
+    btns.forEach(function(bt, i){
+      bt.textContent = sym(b[i]);
+      bt.className = (b[i] === O ? 'O' : b[i] === X ? 'X' : '') + (win.indexOf(i) !== -1 ? ' win' : '');
+      bt.disabled = over || b[i] !== V;
+      bt.setAttribute('aria-label', 'Casa ' + pos(i) + ': ' + (b[i] === V ? 'vazia' : sym(b[i])));
+    });
+  }
+  function finish(res){
+    over = true;
+    statusEl.textContent = res.who === 'empate' ? 'Empate.' : res.who === O ? 'Você venceu! A IA das seis regras perdeu.' : 'A IA venceu.';
+  }
+  function play(i){
+    if (over || b[i] !== V) return;
+    b[i] = O; addLog('Você: O em ' + pos(i));
+    var res = resultado(b);
+    if (res){ draw(); finish(res); return; }
+    var m = iaMove(b, X);
+    b[m.idx] = X;
+    addLog('IA: X em ' + pos(m.idx) + ' · <span class="rule">' + m.rule + '</span> ' + m.why);
+    res = resultado(b); draw();
+    if (res) finish(res); else statusEl.textContent = 'Sua vez.';
+  }
+  document.getElementById('ia-reset').addEventListener('click', reset);
+  reset();
+})();
+
+/* ---------- cartões de revisão ---------- */
+(function(){
+  var CARDS = [
+    { q: 'Por que o tabuleiro usa os valores 0, 1 e 4?', a: ['A soma de três casas identifica o vencedor: 3 são três O, 12 são três X.', 'Com 0, 1 e 4 nenhuma outra mistura de três casas dá 3 ou 12. Com 1 e 2, "O X vazio" somaria 3, igual a "X X X".'] },
+    { q: 'Por que as funções recebem ponteiro e não a struct?', a: ['O C passa argumentos por cópia. A função precisa alterar o tabuleiro e os jogadores da main.', 'Sem ponteiro, a jogada seria gravada na cópia, que desaparece no fim da função.'] },
+    { q: 'Diferença entre . e ->?', a: ['"." acessa o campo quando tenho a struct. "->" quando tenho um ponteiro para ela.', 'p->campo é o atalho de (*p).campo: vá ao endereço, pegue a struct, selecione o campo.'] },
+    { q: 'Por que scanf("%d", modo) não tem & ?', a: ['Porque modo já é um ponteiro (int *), ou seja, já é um endereço.', 'O & só aparece com variável comum, como em scanf("%d", &tipo1).'] },
+    { q: 'Por que o && do joga testa os limites antes da matriz?', a: ['O && para na primeira condição falsa. Testando 0 <= linha < 3 primeiro, a matriz nunca é lida fora dos limites.', 'O C não verifica limites de vetor: ler fora acessa memória de outra coisa.'] },
+    { q: 'Para que serve #ifndef nos headers? E por que nunca se inclui um .c?', a: ['#ifndef/#define/#endif evita que o mesmo header seja incluído duas vezes e declare os tipos em duplicidade.', 'Incluir um .c copiaria suas funções para outro arquivo, e o linker acusaria definição duplicada.'] },
+    { q: 'Por que a vitória é checada antes do empate?', a: ['Se a 9ª jogada vence, o tabuleiro está cheio, mas houve vencedor.', 'Checando o cheio primeiro, essa vitória seria declarada empate.'] },
+    { q: 'Por que jogaIA e não joga?', a: ['O C não permite duas funções com o mesmo nome, mesmo com parâmetros diferentes.', 'O diagrama do enunciado usa joga() nas duas classes porque UML permite; em C é preciso nomes distintos.'] },
+    { q: 'Como a IA bloqueia o adversário? E como cria duas ameaças?', a: ['Bloqueio (R1): procura uma linha com duas peças do adversário e uma casa vazia, e joga nela.', 'Duas ameaças (R2): procura uma casa vazia que deixe duas linhas com duas peças da IA e a terceira vazia.'] },
+    { q: 'Por que cada regra da IA termina com return?', a: ['O return encerra a função na primeira regra que jogou.', 'Sem ele, a IA seguiria para as regras seguintes e jogaria várias vezes no mesmo turno.'] },
+    { q: 'Como a IA sabe o símbolo do adversário?', a: ['É o oposto do dela: se a IA é O (1), o adversário é X (4), e vice-versa. Calculado no começo de jogaIA.'] },
+    { q: 'Por que a regra extra ficou fora da entrega?', a: ['O enunciado pede exatamente as seis regras, testadas em ordem.', 'A regra extra (bloquear a jogada dupla do adversário) deixa a IA invencível, mas é uma sétima regra que o professor não pediu.'] }
+  ];
+  var KEY = 'jdv-cartoes-v1', state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var cur = 0;
+  var qEl = document.getElementById('deck-q'), aEl = document.getElementById('deck-a'), pos_ = document.getElementById('deck-pos');
+  var scoreEl = document.getElementById('deck-score'), barEl = document.getElementById('deck-bar');
+  var show = document.getElementById('deck-show'), know = document.getElementById('deck-know'), rev = document.getElementById('deck-review'), skip = document.getElementById('deck-skip');
+  function nextIndex(from){
+    for (var s = 1; s <= CARDS.length; s++){
+      var k = (from + s) % CARDS.length;
+      if (state[k] !== 'ok') return k;
+    }
+    return from;
+  }
+  function render(){
+    var ok = 0; for (var k in state) if (state[k] === 'ok') ok++;
+    var review = 0; for (var k2 in state) if (state[k2] === 'rev') review++;
+    pos_.textContent = 'Cartão ' + (cur + 1) + ' de ' + CARDS.length;
+    scoreEl.textContent = ok + ' sabidos · ' + review + ' para revisar';
+    barEl.style.width = (100 * ok / CARDS.length) + '%';
+    qEl.textContent = CARDS[cur].q;
+    aEl.innerHTML = ''; CARDS[cur].a.forEach(function(t){ var p = document.createElement('p'); p.textContent = t; aEl.appendChild(p); });
+    aEl.hidden = true; show.hidden = false; know.hidden = true; rev.hidden = true;
+  }
+  show.addEventListener('click', function(){ aEl.hidden = false; show.hidden = true; know.hidden = false; rev.hidden = false; });
+  know.addEventListener('click', function(){ state[cur] = 'ok'; save(); cur = nextIndex(cur); render(); });
+  rev.addEventListener('click', function(){ state[cur] = 'rev'; save(); cur = nextIndex(cur); render(); });
+  skip.addEventListener('click', function(){ cur = (cur + 1) % CARDS.length; render(); });
+  document.getElementById('deck-reset').addEventListener('click', function(){ state = {}; save(); cur = 0; render(); });
+  render();
+})();
+</script>
+</body>
+</html>
